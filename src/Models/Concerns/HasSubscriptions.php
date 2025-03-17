@@ -293,13 +293,12 @@ trait HasSubscriptions
             : null;
 
         $featureConsumption = $this->featureConsumptions()
-            ->make([
-                'consumption' => $consumption,
-                'expired_at' => $consumptionExpiration,
-            ])
-            ->feature()
-            ->associate($feature);
+            ->whereFeatureId($feature->id)
+            ->firstOrNew();
 
+        $featureConsumption->feature()->associate($feature);
+        $featureConsumption->consumption += $consumption;
+        $featureConsumption->expired_at = $consumptionExpiration;
         $featureConsumption->save();
 
         return $featureConsumption;
@@ -341,9 +340,12 @@ trait HasSubscriptions
             return 0;
         }
 
-        return $ticketFeature
-            ->tickets
-            ->sum('charges');
+        $charges = $ticketFeature->tickets->sum('charges');
+        if ($charges === -1) {
+            return INF;
+        }
+
+        return $charges;
     }
 
     public function getFeature(string $featureName): ?Feature
